@@ -1,4 +1,4 @@
-# app.py
+# chatbot.py
 # Team 2 - GenAI project
 #!pip install gensim nltk
 import gensim
