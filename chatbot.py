@@ -40,7 +40,6 @@ def generate_embedding(model, text):
         return np.zeros(model.vector_size)
     embedding = np.mean(word_vectors, axis=0)
     return embedding
-
 try:
     OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
     PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
@@ -198,16 +197,16 @@ for message in st.session_state.chat_history:
 # Accept user input
 if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
     if OPENAI_API_KEY:
-        res=generate_embedding(embedding_model, user_input)
+        input_emb=generate_embedding(embedding_model, user_input)
         # Replace NaN values with 0
-        #cleaned_vector = np.nan_to_num(res.tolist(), nan=0)
-        #cleaned_vector[np.isnan(res)] = 0
+        #cleaned_vector = np.nan_to_num(input_emb.tolist(), nan=0)
+        #cleaned_vector[np.isnan(input_emb)] = 0
         # Ensure the dimension of the vector matches the index dimension
-        if len(res) != 1536:
+
         # Handle the dimension mismatch: Resize the vector to match the index dimension
-            res = np.resize(cleaned_vector, (1536,))
-        kb_res = index.query(vector=res.tolist(), top_k=1, include_metadata=True, namespace='cstu')
-        #try: kb_res = index.query(vector=res.tolist(), top_k=1, include_metadata=True, namespace='cstu')
+        if len(input_emb) != 1536: input_emb = np.resize(cleaned_vector, (1536,))
+        kb_res = index.query(vector=input_emb.tolist(), top_k=1, include_metadata=True, namespace='cstu')
+        #try: kb_res = index.query(vector=input_emb.tolist(), top_k=1, include_metadata=True, namespace='cstu')
         #except PineconeApiException as e:
         #    print(e) # inspect error
         #If the include_metadata parameter is set to True, the query method will only return the id, score, and metadata for each document. The vector for each document will not be returned
@@ -240,9 +239,7 @@ if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
         # Limit the line width to, for example, 60 characters
         max_line_width = 60
         #x = response
-
         if response.get("function_call"): # e.g. Sending email
-
             function_name = response["function_call"]["name"]
             # print("function_name: ",function_name)
             
@@ -263,8 +260,6 @@ if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
                 formatted_text = f"{result}"
             else:
                 print("function_name: ",function_name)
-                
-        
         else:
             # formatted_text = limit_line_width(response["content"], max_line_width)
             formatted_text = response["content"]
@@ -281,7 +276,6 @@ if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
                 st.write(pd.DataFrame(result))
             except Exception as e: 
                 st.write(ai_message['content'])
-
     else:
         st.write("!!! Error: You need to enter OPENAI_API_KEY!")
     
