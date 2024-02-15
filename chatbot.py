@@ -1,4 +1,4 @@
-# chatbot.py
+# app.py
 # Team 2 - GenAI project
 #!pip install gensim nltk
 import gensim
@@ -27,7 +27,8 @@ from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 from joblib import load
 
-embedding_model = load('CSTU-embedding-model.mdl')
+#embedding_model = load('CSTU-embedding-model.mdl')
+embedding_model = "text-embedding-ada-002"
 
 st.title("CSTU Chatbot by GenAI Team 2 💬")
 st.sidebar.image("robo.gif")
@@ -40,6 +41,7 @@ def generate_embedding(model, text):
         return np.zeros(model.vector_size)
     embedding = np.mean(word_vectors, axis=0)
     return embedding
+
 try:
     OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
     PINECONE_API_KEY = st.secrets["PINECONE_API_KEY"]
@@ -59,14 +61,11 @@ except Exception as e:
 # Set OpenAI API key
 openai.api_key = OPENAI_API_KEY
 
-#embed_model = "text-embedding-ada-002"
 index_name = 'cstugpt-kb'
 pc = Pinecone( # initialize connection to pinecone
     api_key=PINECONE_API_KEY,
     environment="us-west1-gcp-free")
 index = pc.Index(index_name) # connect to pinecone index
-
-#print(pc.list_indexes())
 
 if "chat_history" not in st.session_state: 
     st.session_state.chat_history = []    
@@ -76,17 +75,13 @@ delimiter = ""
 if "prompt_history" not in st.session_state: # Initialize the chat history with the system message if it doesn't exist
         st.session_state.prompt_history = [
             {'role': 'system', 'content': f"""\
-You are a chat agent providing concise answers to questions about California Science and Technology University (CSTU) based on contents provided at system role.\
-At begining, welcome users to CSTU. If users require information related to CSTU out of provided context, ask them to check the website www.cstu.edu.\
-If users ask for course registration, ask for user's name. Then provide them a list of available courses for registration.\
-If they select courses, you summarize them and check if they wish to enroll in any additional course or confirm with selected courses.\        
-If it's all, ask for their email address. If they provide email address, complete the registration.\
-If user ask to reconfirm or see the course registration record(s), ask for user's email address. If they provide email address, call function 
-        get_registration with email address and display the results.
-If user ask to enquire or see his her course grades, ask for user's email address. If they provide email address, call function 
-        get_grades with email address and display the results.
-
-                                      """} ]
+You will answer questions about California Science and Technology University (CSTU) based on contents provided at system role. At fisrt, welcome to CSTU.\
+If users ask to register courses, offer available courses for registration and ask them to select courses. After they finish selection, let summarize selected courses and ask for their name and email. If they provide name and email, complete registration.\
+If they want to get registration record, ask their email. If they provide email, call function get_registration.\
+If they want to get course grades, ask their email. If they provide email, call function get_grades.\
+If they inquiry information related to CSTU out of provided context, ask them to check the website www.cstu.edu."""} ]
+"""
+"""
 # During the coversation, refer to chat history and the information delimited by {delimiter}.
 def chat_complete_messages(messages, temperature=0):
     response = openai.ChatCompletion.create(
@@ -96,7 +91,7 @@ def chat_complete_messages(messages, temperature=0):
         functions = [
          {
             "name": "registration",
-            "description": "complete the registration",
+            "description": "complete registration",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -110,7 +105,7 @@ def chat_complete_messages(messages, temperature=0):
          },
         {
             "name": "get_registration",
-            "description": "To reconfirm registration, get the student's registration details",
+            "description": "get registration record",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -121,7 +116,7 @@ def chat_complete_messages(messages, temperature=0):
          },
         {
             "name": "get_grades",
-            "description": "To get the student's grades",
+            "description": "get course grades",
             "parameters": {
                 "type": "object",
                 "properties": {
@@ -130,8 +125,6 @@ def chat_complete_messages(messages, temperature=0):
                 "required": ["student_email"],
             }
          },
-
-
         ],
        function_call="auto",
     )
@@ -150,7 +143,6 @@ def get_registration(student_email):
         del df
     except Exception as e:
         result = f"Registration records not found for {student_email}!"
-
     return result
 
 def get_grades(student_email):
@@ -160,7 +152,6 @@ def get_grades(student_email):
         del df
     except Exception as e:
         result = f"Grades records not found for {student_email}"
-
     return result
 
 # Define a function sending confirmation email for registration
@@ -197,18 +188,12 @@ for message in st.session_state.chat_history:
 # Accept user input
 if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
     if OPENAI_API_KEY:
-        input_emb=generate_embedding(embedding_model, user_input)
-        # Replace NaN values with 0
-        #cleaned_vector = np.nan_to_num(input_emb.tolist(), nan=0)
-        #cleaned_vector[np.isnan(input_emb)] = 0
-        # Ensure the dimension of the vector matches the index dimension
-
-        # Handle the dimension mismatch: Resize the vector to match the index dimension
-        if len(input_emb) != 1536: input_emb = np.resize(cleaned_vector, (1536,))
-        kb_res = index.query(vector=input_emb.tolist(), top_k=1, include_metadata=True, namespace='cstu')
-        #try: kb_res = index.query(vector=input_emb.tolist(), top_k=1, include_metadata=True, namespace='cstu')
-        #except PineconeApiException as e:
-        #    print(e) # inspect error
+        # Word2Vector embedding
+        # input_emb=generate_embedding(embedding_model, user_input)
+        # OpenAI embedding
+        res = openai.Embedding.create(input=[user_input],engine=embedding_model)
+        input_emb=res['data'][0]['embedding'] 
+        kb_res = index.query(vector=input_emb, top_k=1, include_metadata=True, namespace='cstu', metric="cosine")
         #If the include_metadata parameter is set to True, the query method will only return the id, score, and metadata for each document. The vector for each document will not be returned
         metadata_text_list = [x['metadata']['text'] for x in kb_res['matches']]
         limit = 3600  #set the limit of knowledge base words
@@ -238,14 +223,12 @@ if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
         #response = chat_complete_messages(C, temperature=0)
         # Limit the line width to, for example, 60 characters
         max_line_width = 60
-        #x = response
+
         if response.get("function_call"): # e.g. Sending email
             function_name = response["function_call"]["name"]
             # print("function_name: ",function_name)
-            
             # function_to_call = available_functions[function_name]
             # print("function_to_call: ", function_to_call)
-
             function_args = json.loads(response["function_call"]["arguments"])
             if function_name == 'registration':
                 registration(function_args.get("student_name"), function_args.get("student_email"), function_args.get("courses"), function_args.get("body"))
@@ -258,12 +241,9 @@ if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
             elif function_name == 'get_grades':
                 result = get_grades(function_args.get("student_email")) 
                 formatted_text = f"{result}"
-            else:
-                print("function_name: ",function_name)
-        else:
-            # formatted_text = limit_line_width(response["content"], max_line_width)
-            formatted_text = response["content"]
-
+            else: print("function_name: ",function_name)                       
+        else: formatted_text = response["content"]
+            # formatted_text = limit_line_width(response["content"], max_line_width)            
         ai_message = {"role": "assistant", "content": formatted_text}
         st.session_state.chat_history.append(ai_message)
         st.session_state.prompt_history.append(ai_message)
