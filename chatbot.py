@@ -30,8 +30,13 @@ from joblib import load
 #embedding_model = load('CSTU-embedding-model.mdl')
 embedding_model = "text-embedding-ada-002"
 
-st.title("CSTU Chatbot by GenAI Team 2 💬")
-st.sidebar.image("robo.gif")
+st.title("CSTU GenAI Chatbot by Team 2 💬")
+st.sidebar.image("CSTU.png",use_column_width=True)
+st.sidebar.markdown("<font color='darkblue'><b>Course: CSE642 - GenAI</b></font>", unsafe_allow_html=True)
+st.sidebar.markdown("<font color='darkblue'><b>Professor: Sridharan Muthuswamy</b></font>", unsafe_allow_html=True)
+st.sidebar.markdown("<font color='darkblue'><b>Students: Lam Dao & Fang Wang</b></font>", unsafe_allow_html=True)
+st.sidebar.markdown("<font color='darkblue'><b>Released time: February 17th, 2024</b></font>", unsafe_allow_html=True)
+st.sidebar.image("robo.gif",use_column_width=True)
 
 # Generate an embedding for a text
 def generate_embedding(model, text):
