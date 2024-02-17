@@ -84,7 +84,7 @@ You will answer questions about California Science and Technology University (CS
 If users ask to register courses, offer available courses for registration and ask them to select courses. After they finish selection, let summarize selected courses and ask for their name and email. If they provide name and email, complete registration.\
 If they want to get registration record, ask their email. If they provide email, call function get_registration.\
 If they want to get course grades, ask their email. If they provide email, call function get_grades.\
-If user want to update course grades, ask secrete code. If they give a code other than 2024, tell them invalid code and ask them try again. If they enter 2024, call function updade_grades.\
+If user want to update course grades, ask secrete code. If they give a code other than 20240217, tell them invalid code and ask them try again. If they enter 2024, call function updade_grades.\
 If they inquiry information related to CSTU out of provided context, ask them to check the website www.cstu.edu or email admission@cstu.edu, Tel 408-400-3948."""} ]
 """
 """
@@ -267,6 +267,9 @@ if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
                 registration(function_args.get("student_name"), function_args.get("student_email"), function_args.get("courses"), function_args.get("body"))
                 formatted_text = "Thank you for providing your email address. A confirmation message for your registration has been sent to your email. Please check it and let me known if there is any further requirement."
                 #st.info("The following message has been sent to "+function_args.get("student_email")+":\n"+function_args.get("body"))
+                ai_message = {"role": "assistant", "content": formatted_text}
+                st.session_state.chat_history.append(ai_message)
+                st.session_state.prompt_history.append(ai_message)
             elif function_name == 'get_registration':
                 # print(function_args.get("student_email"))
                 result = get_registration(function_args.get("student_email")) 
@@ -276,13 +279,17 @@ if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
                 formatted_text = f"{result}"
             elif function_name == 'update_grades':
                 result = update_grades(function_args.get("prof_code")) 
+                ai_message = {"role": "assistant", "content": formatted_text}
+                st.session_state.chat_history.append(ai_message)
+                st.session_state.prompt_history.append(ai_message)                
                 formatted_text = "Grades updated!"
             else: print("function_name: ",function_name)                       
-        else: formatted_text = response["content"]
-            # formatted_text = limit_line_width(response["content"], max_line_width)            
-        ai_message = {"role": "assistant", "content": formatted_text}
-        st.session_state.chat_history.append(ai_message)
-        st.session_state.prompt_history.append(ai_message)
+        else: 
+            formatted_text = response["content"]
+            # formatted_text = limit_line_width(response["content"], max_line_width)             
+            ai_message = {"role": "assistant", "content": formatted_text}
+            st.session_state.chat_history.append(ai_message)
+            st.session_state.prompt_history.append(ai_message)
 
         # Display message in chat message container
         with st.chat_message("user"):
