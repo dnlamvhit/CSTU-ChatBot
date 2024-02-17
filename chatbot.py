@@ -84,6 +84,7 @@ You will answer questions about California Science and Technology University (CS
 If users ask to register courses, offer available courses for registration and ask them to select courses. After they finish selection, let summarize selected courses and ask for their name and email. If they provide name and email, complete registration.\
 If they want to get registration record, ask their email. If they provide email, call function get_registration.\
 If they want to get course grades, ask their email. If they provide email, call function get_grades.\
+If user want to update course grades, ask secrete code. If they give a code other than 2024, tell them invalid code and ask them try again. If they enter 2024, call function updade_grades.\
 If they inquiry information related to CSTU out of provided context, ask them to check the website www.cstu.edu or email admission@cstu.edu, Tel 408-400-3948."""} ]
 """
 """
@@ -120,6 +121,17 @@ def chat_complete_messages(messages, temperature=0):
             }
          },
         {
+            "name": "update_grades",
+            "description": "update course grades",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "prof_code": {"type": "string", "description": "The secrete code of the professor",}
+                },
+                #"required": ["prof_code"],
+            }
+         },
+        {
             "name": "get_grades",
             "description": "get course grades",
             "parameters": {
@@ -141,29 +153,9 @@ def limit_line_width(text, max_line_width):
     lines = textwrap.wrap(text, width=max_line_width)
     return "\n".join(lines)
 
-def get_registration(student_email):
-    try:
-        df = pd.read_csv("registration_records.csv")
-        result = df[df["EMAIL ADDRESS"] == student_email].to_dict()
-        del df
-    except Exception as e:
-        result = f"Registration records not found for {student_email}!"
-    return result
-
-def get_grades(student_email):
-    try:
-        df = pd.read_csv("grades.csv")
-        result = df[df["student_email"] == student_email].to_dict()
-        del df
-    except Exception as e:
-        result = f"Grades records not found for {student_email}"
-    return result
-
-# Define a function sending confirmation email for registration
 def registration(student_name,student_email,courses,body):
     try:
         csv_file = "registration_records.csv"
-        #print(student_email,body,name, courses)
         data = [time.strftime("%Y-%m-%d %H:%M:%S"), student_name, student_email, courses]
         if not os.path.exists(csv_file):
             with open(csv_file, "w", newline="") as file:
@@ -179,13 +171,49 @@ def registration(student_name,student_email,courses,body):
             html_content=body)
         sg = SendGridAPIClient(SENDGRID_API_KEY)
         response = sg.send(message)
-        #print(response.status_code)
-        #print(response.body)
-        #print(response.headers)
     except Exception as e:
             print(e.message)
             st.info("A registration confirmation message has been sent to your email.")
     
+def get_registration(student_email):
+    try:
+        df = pd.read_csv("registration_records.csv")
+        result = df[df["EMAIL ADDRESS"] == student_email].to_dict()
+        del df
+    except Exception as e:
+        result = f"Registration records not found for {student_email}!"
+    return result
+
+
+def update_grades(prof_code):
+  new_grades = st.file_uploader("Select your new grades file", type="csv")
+  time.sleep(30)
+  #while new_grades is None: pass
+      #if prof_code==2004:  
+  st.write("Grades updated!") 
+  try:
+            df = pd.read_csv("newgrades.csv")
+            print(df)
+            if os.path.exists("grades.csv"):
+                df.to_csv("grades.csv", mode="a", index=False, header=False)
+            else:
+                df.to_csv("grades.csv", index=False)
+            st.balloons()
+            del new_grades 
+            return("Grades updated!")
+  except Exception as e:
+            st.write(e)
+      #else: st.write("Your secrete code is invalid")
+      
+def get_grades(student_email):
+    try:
+        df = pd.read_csv("grades.csv")
+        result = df[df["student_email"] == student_email].to_dict()
+        del df
+    except Exception as e:
+        result = f"Grades records not found for {student_email}"
+    return result
+
 # Display chat messages from history on app rerun
 for message in st.session_state.chat_history:
     with st.chat_message(message["role"]):
@@ -246,6 +274,9 @@ if user_input := st.chat_input("Welcome to CSTU Chatbot of GenAI Team 2! 🤖"):
             elif function_name == 'get_grades':
                 result = get_grades(function_args.get("student_email")) 
                 formatted_text = f"{result}"
+            elif function_name == 'update_grades':
+                result = update_grades(function_args.get("prof_code")) 
+                formatted_text = "Grades updated!"
             else: print("function_name: ",function_name)                       
         else: formatted_text = response["content"]
             # formatted_text = limit_line_width(response["content"], max_line_width)            
